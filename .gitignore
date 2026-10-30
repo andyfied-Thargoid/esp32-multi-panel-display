@@ -1,0 +1,24 @@
+# Example .gitignore for ESP32 Multi-Panel Display
+# Copy this to .gitignore in your project directory
+
+# Secrets and credentials
+config.h
+
+# Build artifacts
+*.bin
+*.elf
+*.hex
+
+# Arduino IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# PlatformIO
+.platformio/
+.build/
+.vscode/
+
+# Serial logs
+*.log

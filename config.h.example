@@ -1,0 +1,87 @@
+/*
+ * ESP32 Multi-Panel Display - Configuration Header (EXAMPLE)
+ * ===========================================================
+ * 
+ * Copy this file to config.h and fill in your credentials.
+ * DO NOT commit API keys or passwords to version control!
+ */
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// ============================================================================
+// WiFi Credentials
+// ============================================================================
+// Your local WiFi network credentials
+// compute01 is on 192.168.1.92/24 network
+
+#define WIFI_SSID     "YOUR_WIFI_SSID"        // Replace with your WiFi network name
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"    // Replace with your WiFi password
+
+// ============================================================================
+// NTP Configuration
+// ============================================================================
+// NTP Server for time synchronization
+#define NTP_SERVER    "pool.ntp.org"
+#define TIMEZONE_OFFSET 0  // UTC offset in hours (0 = UTC, +1 = CET, etc.)
+#define UPDATE_INTERVAL 60000  // Update time every 60 seconds
+
+// ============================================================================
+// Weather Configuration
+// ============================================================================
+// OpenWeatherMap API configuration
+// Get your free API key at: https://openweathermap.org/api
+#define WEATHER_API_KEY "YOUR_OPENWEATHERMAP_API_KEY"
+#define WEATHER_CITY    "London,uk"  // Default city (can be changed)
+
+// ============================================================================
+// compute01 API Configuration
+// ============================================================================
+// compute01 is at 192.168.1.92 per hardware manifest
+// These endpoints are used for system monitoring
+
+// llama-swap health endpoint (P40 models)
+#define COMPUTE01_HOST      "192.168.1.92"
+#define LLAMA_SWAP_PORT     11439
+#define LLAMA_SWAP_HEALTH   "/health"
+
+// Ministral endpoint (GTX 1650)
+#define MINISTRAL_PORT      11438
+#define MINISTRAL_HEALTH    "/health"
+
+// Grafana dashboard (for future integration)
+#define GRAFANA_PORT        3000
+#define GRAFANA_BASE        "/api/dashboards/uid/compute01-gpu"
+
+// Prometheus metrics (for GPU temps, RAM, disk)
+#define PROMETHEUS_PORT     9090
+#define PROMETHEUS_BASE     "/api/v1/query"
+
+// ============================================================================
+// Display Configuration
+// ============================================================================
+// ESP32-2432S028C specific settings
+#define TFT_WIDTH   240
+#define TFT_HEIGHT  320
+
+// ============================================================================
+// Touch Configuration
+// ============================================================================
+// XPT2046 touch controller settings
+#define TOUCH_CS    33
+#define TOUCH_IRQ   25
+
+// ============================================================================
+// Update Intervals (seconds)
+// ============================================================================
+#define WEATHER_UPDATE_INTERVAL_SEC  300   // 5 minutes
+#define SYSTEM_UPDATE_INTERVAL_SEC   30    // 30 seconds
+#define TIME_UPDATE_INTERVAL_SEC     3600  // 1 hour
+
+// ============================================================================
+// Panel Timeout Settings
+// ============================================================================
+// Auto-rotate back to clock panel after X seconds of inactivity
+#define AUTO_RETURN_TO_CLOCK_SEC  0  // 0 = disabled (manual cycling only)
+
+#endif // CONFIG_H
