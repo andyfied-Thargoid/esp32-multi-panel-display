@@ -53,11 +53,17 @@ arduino-ide --no-sandbox &
 - **Flash Size**: 4MB (32Mb)
 - **Upload Speed**: 921600
 
-### 3. Configure TFT_eSPI
-Edit `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h`:
-```cpp
-#define ESP32_SSD2814
+### 3. Configure TFT_eSPI for the exact CYD C revision
+Copy the repository setup into the TFT_eSPI setup directory:
+```bash
+cp Setup801_ESP32_CYD_ILI9341_240x320.h \
+  ~/Arduino/libraries/TFT_eSPI/User_Setups/Setup801_ESP32_CYD_ILI9341_240x320.h
 ```
+Then edit `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h` so the repository setup is the one active include:
+```cpp
+#include <User_Setups/Setup801_ESP32_CYD_ILI9341_240x320.h>
+```
+The setup explicitly selects `ILI9341_2_DRIVER`, 240x320 dimensions, SPI MISO/MOSI/SCLK 12/13/14, TFT CS/DC 15/2, software reset, GPIO21 active-HIGH backlight, HSPI, and a conservative 27MHz SPI clock. The sketch handles the C revision's CST820 touch separately over I2C (SDA 33, SCL 32, reset 25).
 
 ### 4. Set WiFi Credentials
 Edit `ESP32_MultiPanel_Display/config.h`:
@@ -94,8 +100,9 @@ arduino-cli upload --fqbn esp32:esp32:esp32 \
 | TFT CS | 15 |
 | TFT DC | 2 |
 | TFT RST | 4 (or -1 for SW reset) |
-| Touch CS | 33 |
-| Touch IRQ | 25 |
+| CST820 SDA | 33 | I2C SDA |
+| CST820 SCL | 32 | I2C SCL |
+| CST820 reset | 25 | Reset |
 
 ## 🚀 Upload Troubleshooting
 
@@ -104,7 +111,7 @@ arduino-cli upload --fqbn esp32:esp32:esp32 \
 | "Failed to connect" | Hold BOOT, press RESET, release both |
 | Brownout reset | Set CPU to 160MHz, use external 5V power |
 | Touch not working | Verify `User_Setup.h` touch pin config |
-| Display black | Check TFT_eSPI `ESP32_SSD2814` definition |
+| Display black | Verify the selected setup contains `ILI9341_2_DRIVER`, the CYD SPI pins, GPIO21 backlight, and `USE_HSPI_PORT` |
 
 ## 📚 Documentation
 

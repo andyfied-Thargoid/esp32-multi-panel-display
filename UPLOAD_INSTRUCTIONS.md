@@ -61,14 +61,15 @@ In Arduino IDE **Sketch > Include Library > Manage Libraries**:
 
 For ESP32-2432S028C, you must configure the display:
 
-1. Navigate to: `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h`
-2. Uncomment the line for your display:
+1. Copy `Setup801_ESP32_CYD_ILI9341_240x320.h` into `~/Arduino/libraries/TFT_eSPI/User_Setups/`.
+2. In `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h`, enable exactly this setup:
    ```cpp
-   #define ESP32_SSD2814
+   #include <User_Setups/Setup801_ESP32_CYD_ILI9341_240x320.h>
    ```
-   OR for custom setup, edit `User_Setup.h`:
+   Do not enable `ESP32_SSD2814` or another display setup. The supplied setup selects `ILI9341_2_DRIVER`, 240x320 dimensions, SPI pins 12/13/14, CS/DC 15/2, software reset, GPIO21 active-HIGH backlight, `USE_HSPI_PORT`, and 27MHz SPI.
+   OR, if maintaining a local setup, it must contain at least:
    ```cpp
-   #define SSD2814_DRIVER
+   #define ILI9341_2_DRIVER
    #define TFT_WIDTH  240
    #define TFT_HEIGHT 320
    #define TFT_MISO 12
@@ -76,7 +77,9 @@ For ESP32-2432S028C, you must configure the display:
    #define TFT_SCLK 14
    #define TFT_CS   15
    #define TFT_DC    2
-   #define TFT_RST   4  // or -1 for software reset
+   #define TFT_RST  -1
+#define TFT_BL   21
+#define TFT_BACKLIGHT_ON HIGH
    #define CST820_SDA 33
    #define CST820_SCL 32
    #define CST820_RST 25
@@ -177,9 +180,10 @@ esptool.py --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard
 **Solutions**:
 - Verify TFT_eSPI `User_Setup.h` matches your board:
   ```cpp
-  #define ESP32_SSD2814  // For ESP32-2432S028C
+  #define ILI9341_2_DRIVER  // For ESP32-2432S028C
   ```
-- Check wiring (SPI pins, CS, DC, RST)
+- Check wiring (SPI pins, CS, DC, RST) and GPIO21 backlight
+- Confirm the compiled setup is `Setup801_ESP32_CYD_ILI9341_240x320.h`
 - Verify power to display (5V required)
 
 #### 5. **WiFi Connection Fails**
@@ -215,7 +219,7 @@ The sketch outputs to Serial at 115200 baud:
 #### GPIO Pin Verification
 If display/touch issues persist, verify pin mapping:
 - Display SPI: MISO(12), MOSI(13), SCLK(14), CS(15), DC(2), RST(4)
-- Touch CS: 33, Touch IRQ: 25
+- CST820 I2C: SDA(33), SCL(32), reset(25)
 - Check for conflicts with other peripherals
 
 ## Board Characteristics
