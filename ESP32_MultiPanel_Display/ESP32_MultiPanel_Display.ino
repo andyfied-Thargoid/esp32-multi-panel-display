@@ -104,8 +104,11 @@ time_t currentTime = 0;
 // Touch state
 uint16_t lastTouchX = 0, lastTouchY = 0;
 uint16_t lastPressX = 0, lastPressY = 0;
-bool isTouched = false;
+bool isTouched = false;  // Current physical press state.
 unsigned long lastTapTime = 0;
+unsigned long lastReleaseTime = 0;
+const unsigned long TOUCH_DEBOUNCE_MS = 50;
+const unsigned long DOUBLE_TAP_WINDOW_MS = 300;
 
 // Panel state
 int currentPanel = 0;  // 0 = Clock, 1 = Weather, 2 = System
@@ -516,56 +519,56 @@ void fetchSystemMetrics() {
 // ============================================================================
 
 void handleTouch() {
-  if (!ts.touched()) {
-    isTouched = false;
+  const bool currentlyTouched = ts.touched();
+
+  // A release arms the next distinct press. No action is taken on release.
+  if (!currentlyTouched) {
+    if (isTouched) {
+      isTouched = false;
+      lastReleaseTime = millis();
+    }
     return;
   }
 
+  // Ignore every poll while the same finger remains down.
+  if (isTouched) return;
+
   uint16_t rawX = 0;
   uint16_t rawY = 0;
-  if (!ts.getPoint(rawX, rawY)) {
-    isTouched = false;
-    return;
-  }
+  if (!ts.getPoint(rawX, rawY)) return;
 
   // CST820 reports native portrait coordinates; map them to the landscape TFT.
   int touchX = map(rawY, 0, TFT_HEIGHT, 0, TFT_WIDTH);
   int touchY = map(rawX, 0, TFT_WIDTH, TFT_HEIGHT, 0);
-
-  // Ensure within bounds
   touchX = constrain(touchX, 0, TFT_WIDTH - 1);
   touchY = constrain(touchY, 0, TFT_HEIGHT - 1);
 
-  if (isTouched) {
-    // Check for double-tap
-    unsigned long currentTime = millis();
-    if (currentTime - lastTapTime < 300 &&
-        abs(touchX - lastPressX) < 20 &&
-        abs(touchY - lastPressY) < 20) {
-      // Double-tap detected - return to clock panel
-      currentPanel = 0;
-      lastPanelUpdate = millis();
-      Serial.println("Double-tap: Switching to Clock panel");
-    }
+  const unsigned long now = millis();
+  const unsigned long sinceRelease = now - lastReleaseTime;
+  const bool secondPress = lastReleaseTime != 0 &&
+                           sinceRelease >= TOUCH_DEBOUNCE_MS &&
+                           sinceRelease <= DOUBLE_TAP_WINDOW_MS &&
+                           abs(touchX - lastPressX) < 20 &&
+                           abs(touchY - lastPressY) < 20;
 
-    isTouched = false;
-  } else {
-    // Single touch - cycle panels
-    isTouched = true;
-    lastPressX = touchX;
-    lastPressY = touchY;
-    lastTapTime = currentTime;
-
-    // Cycle to next panel
-    currentPanel = (currentPanel + 1) % 3;
-    lastPanelUpdate = millis();
-
-    Serial.print("Touch: Switching to panel ");
-    Serial.println(currentPanel);
-  }
-
+  isTouched = true;
   lastTouchX = touchX;
   lastTouchY = touchY;
+  lastPressX = touchX;
+  lastPressY = touchY;
+  lastTapTime = now;
+
+  if (secondPress) {
+    currentPanel = 0;
+    lastPanelUpdate = now;
+    Serial.println("Double-tap: Switching to Clock panel");
+    return;
+  }
+
+  currentPanel = (currentPanel + 1) % 3;
+  lastPanelUpdate = now;
+  Serial.print("Touch: Switching to panel ");
+  Serial.println(currentPanel);
 }
 
 // ============================================================================
