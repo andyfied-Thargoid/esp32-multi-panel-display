@@ -120,6 +120,7 @@ float weatherTemp = 0.0;
 String weatherCondition = "";
 String weatherIcon = "";
 unsigned long lastWeatherUpdate = 0;
+volatile bool weatherDataChanged = true;
 const unsigned long WEATHER_UPDATE_INTERVAL = 300000;  // 5 minutes
 
 // System state
@@ -130,6 +131,7 @@ bool ministralRunning = false;
 float ramUsage = 0.0;
 float diskUsage = 0.0;
 unsigned long lastSystemUpdate = 0;
+volatile bool systemDataChanged = true;
 const unsigned long SYSTEM_UPDATE_INTERVAL = 30000;  // 30 seconds
 
 // API endpoints (compute01 is on 192.168.1.92 per hardware manifest)
@@ -458,6 +460,7 @@ void fetchWeather() {
     }
 
     lastWeatherUpdate = millis();
+    weatherDataChanged = true;
   }
 
   http.end();
@@ -512,6 +515,7 @@ void fetchSystemMetrics() {
   p40Temp = 52.8;
 
   lastSystemUpdate = millis();
+  systemDataChanged = true;
 }
 
 // ============================================================================
@@ -587,8 +591,18 @@ void displayTask(void* parameter) {
     if (millis() - lastUpdate >= 33) {
       lastUpdate = millis();
 
-      // Redraw panel if changed
-      if (currentPanel != lastPanel) {
+      // Redraw when selected, and whenever the selected panel's data changes.
+      // NetworkTask marks the data dirty after each successful refresh.
+      bool panelNeedsRedraw = currentPanel != lastPanel;
+      if (currentPanel == 1 && weatherDataChanged) {
+        weatherDataChanged = false;
+        panelNeedsRedraw = true;
+      } else if (currentPanel == 2 && systemDataChanged) {
+        systemDataChanged = false;
+        panelNeedsRedraw = true;
+      }
+
+      if (panelNeedsRedraw) {
         switch (currentPanel) {
           case 0:
             drawClockPanel();
@@ -601,11 +615,9 @@ void displayTask(void* parameter) {
             break;
         }
         lastPanel = currentPanel;
-      } else {
-        // Redraw clock panel continuously (for second changes)
-        if (currentPanel == 0) {
-          drawClockPanel();
-        }
+      } else if (currentPanel == 0) {
+        // Clock content changes frequently, so keep its existing redraw behavior.
+        drawClockPanel();
       }
     }
 
