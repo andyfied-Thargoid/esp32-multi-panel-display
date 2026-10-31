@@ -26,8 +26,6 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <TFT_eSPI.h>
-#include <TFT_eSPI_GFX.h>
-#include <SPI.h>
 #include "esp_heap_caps.h"
 
 #include "config.h"

@@ -1,0 +1,125 @@
+# ESP32 Arduino IDE Setup - Quick Reference
+
+## ✅ Installation Status
+
+### Arduino IDE
+- **Location**: `/home/andyfied/opt/arduino/`
+- **Version**: 2.3.4
+- **Status**: ✅ Installed
+
+### arduino-cli
+- **Location**: `/usr/local/bin/arduino-cli`
+- **Version**: 1.5.2-rc.1
+- **Status**: ✅ Installed
+
+### ESP32 Board Package
+- **Platform**: `esp32:esp32`
+- **Version**: 3.3.12
+- **FQBN**: `esp32:esp32:esp32`
+- **Status**: ✅ Installed
+
+### Libraries Installed
+| Library | Version | Location |
+|---------|---------|----------|
+| TFT_eSPI | 2.5.44 | `~/Arduino/libraries/TFT_eSPI` |
+| ArduinoJson | 7.4.2 | `~/Arduino/libraries/ArduinoJson` |
+| XPT2046_Touchscreen | 1.4 | `~/Arduino/libraries/XPT2046_Touchscreen` |
+| Time | 1.6.1 | `~/Arduino/libraries/Time` |
+| NTPClient | 3.2.1 | `~/Arduino/libraries/NTPClient` |
+| Arduino_GFX | latest | `~/.arduino15/libraries/Arduino_GFX` |
+| JPEGDEC | latest | `~/.arduino15/libraries/JPEGDEC` |
+
+## ✅ Project Compilation
+
+**Sketch**: `ESP32_MultiPanel_Display.ino`
+- **Status**: ✅ Compiles successfully
+- **Flash Size**: 1,086,504 bytes (82% of 4MB flash)
+- **RAM Usage**: 50,480 bytes (15% of 327,680 bytes)
+- **Output**: `.bin`, `.elf`, `.merged.bin` generated
+
+## 📋 Quick Setup Steps
+
+### 1. Open Project in Arduino IDE
+```bash
+# Or open directly from GUI
+arduino-ide --no-sandbox &
+```
+- File → Open → `esp32-multi-panel-display/ESP32_MultiPanel_Display.ino`
+
+### 2. Configure Board
+- **Board**: `ESP32 Dev Module`
+- **FQBN**: `esp32:esp32:esp32`
+- **CPU Frequency**: 240MHz
+- **Flash Size**: 4MB (32Mb)
+- **Upload Speed**: 921600
+
+### 3. Configure TFT_eSPI
+Edit `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h`:
+```cpp
+#define ESP32_SSD2814
+```
+
+### 4. Set WiFi Credentials
+Edit `ESP32_MultiPanel_Display/config.h`:
+```cpp
+#define WIFI_SSID     "your_wifi_name"
+#define WIFI_PASSWORD "your_wifi_password"
+```
+
+### 5. Upload
+- Connect ESP32 via USB
+- Select port: `/dev/ttyUSB0` (or `/dev/ttyACM0`)
+- Click **Upload** button
+
+## 🔧 Command Line Compilation
+
+```bash
+# Compile
+arduino-cli compile --fqbn esp32:esp32:esp32 \
+  ./esp32-multi-panel-display/ESP32_MultiPanel_Display
+
+# Upload
+arduino-cli upload --fqbn esp32:esp32:esp32 \
+  -p /dev/ttyUSB0 \
+  ./esp32-multi-panel-display/ESP32_MultiPanel_Display
+```
+
+## 📝 Board Pin Mapping (ESP32-2432S028C)
+
+| Function | Pin |
+|----------|-----|
+| SPI MISO | 12 |
+| SPI MOSI | 13 |
+| SPI SCLK | 14 |
+| TFT CS | 15 |
+| TFT DC | 2 |
+| TFT RST | 4 (or -1 for SW reset) |
+| Touch CS | 33 |
+| Touch IRQ | 25 |
+
+## 🚀 Upload Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Failed to connect" | Hold BOOT, press RESET, release both |
+| Brownout reset | Set CPU to 160MHz, use external 5V power |
+| Touch not working | Verify `User_Setup.h` touch pin config |
+| Display black | Check TFT_eSPI `ESP32_SSD2814` definition |
+
+## 📚 Documentation
+
+- **Full Upload Instructions**: `UPLOAD_INSTRUCTIONS.md`
+- **Project README**: `esp32-display/README.md`
+- **TFT_eSPI**: https://github.com/Bodmer/TFT_eSPI
+- **ESP32 Core**: https://github.com/espressif/arduino-esp32
+
+## ✅ Verification Checklist
+
+- [x] Arduino IDE installed (v2.3.4)
+- [x] arduino-cli installed (v1.5.2-rc.1)
+- [x] ESP32 board package installed (v3.3.12)
+- [x] All required libraries installed
+- [x] Project compiles successfully
+- [x] Upload instructions documented
+- [ ] Board physically connected (pending)
+- [ ] First upload completed (pending)

@@ -5,6 +5,7 @@
 config.h
 
 # Build artifacts
+build/
 *.bin
 *.elf
 *.hex

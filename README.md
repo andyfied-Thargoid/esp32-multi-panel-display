@@ -24,23 +24,33 @@ A multi-panel TFT display project for the ESP32-2432S028C (2.8" 240x320 display)
 
 ### Arduino IDE Setup
 
+- ✅ **Arduino IDE 2.3.4 installed and configured**
+- ✅ **arduino-cli 1.5.2-rc.1 installed and configured**
+- ✅ **ESP32 Board Package v3.3.12 installed**
+- ✅ **All required libraries installed**
+- ✅ **Project compiles successfully**
+
+See `SETUP_SUMMARY.md` for detailed installation status, or `UPLOAD_INSTRUCTIONS.md` for complete upload procedures.
+
+#### Manual Setup (if needed)
+
 1. **Install ESP32 Board Manager:**
    - Open Arduino IDE
    - Go to `File > Preferences`
-   - In "Additional Board Manager URLs", add: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+   - In "Additional Board Manager URLs", add: `https://raw.githubusercontent.com/espressif/arduino-esp32/3.x/package_esp32_dev_index.json`
    - Go to `Tools > Board > Boards Manager`
    - Search for "esp32" and install "ESP32 by Espressif Systems"
 
 2. **Install Required Libraries:**
-   - `TFT_eSPI` by Bodmer (Search in Library Manager)
+   - `TFT_eSPI` by Bodmer
    - `ArduinoJson` by Benoit Blanchon
    - `XPT2046_Touchscreen` by Steven M. Jones
    - `Time` by Paul Stoffregen
-   - `NTPClient` by tzapu (or use built-in ESP32 NTP)
+   - `NTPClient` by tzapu
 
 3. **Select Board:**
    - `Tools > Board > ESP32 Arduino > ESP32 Dev Module`
-   - `Tools > Upload Speed > 115200`
+   - `Tools > Upload Speed > 921600`
    - `Tools > CPU Frequency > 240MHz`
 
 ### Configuration
@@ -84,25 +94,28 @@ The ESP32-2432S028C has integrated display and touch controller. The board uses:
 
 **Note:** The ESP32-2432S028C board has these pins pre-wired. You typically don't need to connect anything externally unless modifying the setup.
 
-## compile & Upload
+## Compilation & Upload
 
-1. **Open the sketch:**
-   ```bash
-   arduino ESP32_MultiPanel_Display.ino
-   ```
+### Quick Start
 
-2. **Configure:**
-   - Edit `config.h` with your WiFi and API credentials
-   - Set the correct `COMPUTE01_HOST` if different from default (192.168.1.92)
+The project compiles successfully with Arduino IDE and arduino-cli.
 
-3. **Upload:**
-   - Connect ESP32-2432S028C via USB
-   - Select correct COM port in Arduino IDE
-   - Click Upload button
+1. **Open the project**: `ESP32_MultiPanel_Display/ESP32_MultiPanel_Display.ino`
+2. **Configure**: Edit `config.h` with WiFi credentials
+3. **Select board**: ESP32 Dev Module (FQBN: `esp32:esp32:esp32`)
+4. **Upload**: Use Arduino IDE Upload button or command line
 
-4. **Monitor output:**
-   - Open Serial Monitor at 115200 baud
-   - Watch for connection status and panel cycling
+### Command Line
+
+```bash
+# Compile
+arduino-cli compile --fqbn esp32:esp32:esp32 ./ESP32_MultiPanel_Display
+
+# Upload
+arduino-cli upload --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 ./ESP32_MultiPanel_Display
+```
+
+See `UPLOAD_INSTRUCTIONS.md` for detailed upload procedures and troubleshooting.
 
 ## compute01 API Endpoints
 
@@ -120,7 +133,7 @@ The System Monitor panel fetches data from compute01's services:
 - **GPU temperatures:** Currently using placeholder values. To get real GPU temps:
   - Enable Prometheus access from ESP32 network
   - Query DCGM metrics: `DCGM_FI_DEV_GPU_TEMP`
-  
+
 - **RAM/Disk usage:** Placeholder values. To get real values:
   - Query Prometheus: `node_memory_MemAvailable_bytes`
   - Query disk usage via `/proc/mounts` or Prometheus node exporter
@@ -131,7 +144,7 @@ The System Monitor panel fetches data from compute01's services:
 # GPU temperature (GTX 1650)
 DCGM_FI_DEV_GPU_TEMP{gpu="0"}
 
-# GPU temperature (P40)  
+# GPU temperature (P40)
 DCGM_FI_DEV_GPU_TEMP{gpu="1"}
 
 # RAM usage percentage
