@@ -22,6 +22,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <TimeLib.h>
 #include <NTPClient.h>
@@ -30,6 +31,7 @@
 #include "esp_heap_caps.h"
 
 #include "config.h"
+#include "openweathermap_root_ca.h"
 
 // ============================================================================
 // TFT_eSPI Configuration for ESP32-2432S028C
@@ -429,19 +431,25 @@ void fetchWeather() {
     return;
   }
 
-  HTTPClient http;
-  String url = "http://api.openweathermap.org/data/2.5/weather?q=";
+  WiFiClientSecure client;
+  client.setCACert(OPENWEATHERMAP_ROOT_CA);
+
+  HTTPClient https;
+  String url = "https://api.openweathermap.org/data/2.5/weather?q=";
   url += weatherCity;
   url += "&units=metric&lang=en&appid=";
   url += WEATHER_API_KEY;
 
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
+  if (!https.begin(client, url)) {
+    Serial.println("Weather HTTPS setup failed");
+    return;
+  }
+  https.addHeader("Content-Type", "application/json");
 
-  int httpCode = http.GET();
+  const int httpCode = https.GET();
 
-  if (httpCode > 0) {
-    String payload = http.getString();
+  if (httpCode == HTTP_CODE_OK) {
+    String payload = https.getString();
 
     // Parse weather JSON (ArduinoJson 7.x)
     // Using simple string parsing to avoid ArduinoJson dependency issues
@@ -469,9 +477,12 @@ void fetchWeather() {
 
     lastWeatherUpdate = millis();
     weatherDataChanged = true;
+  } else {
+    Serial.print("Weather HTTPS request failed, HTTP code: ");
+    Serial.println(httpCode);
   }
 
-  http.end();
+  https.end();
 }
 
 // Fetch system metrics from compute01
