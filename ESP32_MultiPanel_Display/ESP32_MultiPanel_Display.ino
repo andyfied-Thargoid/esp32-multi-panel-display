@@ -487,7 +487,7 @@ void fetchSystemMetrics() {
   // Fetch Ministral status
   HTTPClient http2;
   String ministralUrl = "http://";
-  ministralUrl += COMPUTE01_HOST;
+  ministralUrl += COMPUTE01_HOST_STR;
   ministralUrl += ":11438/health";
   http2.begin(ministralUrl);
   httpCode = http2.GET();

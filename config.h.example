@@ -1,0 +1,39 @@
+// Credential-free configuration template for the canonical CYD sketch.
+// Copy this file to config.h and replace the placeholder values locally.
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define WIFI_SSID     "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+
+#define NTP_SERVER       "pool.ntp.org"
+#define TIMEZONE_OFFSET  0
+#define UPDATE_INTERVAL  60000
+
+#define WEATHER_API_KEY "YOUR_OPENWEATHERMAP_API_KEY"
+#define WEATHER_CITY    "YOUR_CITY"
+
+#define COMPUTE01_HOST   "192.168.1.92"
+#define LLAMA_SWAP_PORT  11439
+#define LLAMA_SWAP_HEALTH "http://192.168.1.92:11439/health"
+#define MINISTRAL_PORT   11438
+#define MINISTRAL_HEALTH "http://192.168.1.92:11438/health"
+#define GRAFANA_PORT     3000
+#define GRAFANA_BASE     "http://192.168.1.92:3000"
+#define PROMETHEUS_PORT  9090
+#define PROMETHEUS_BASE  "http://192.168.1.92:9090"
+
+#define TFT_WIDTH  240
+#define TFT_HEIGHT 320
+
+// ESP32-2432S028C C revision: CST820 capacitive touch is wired over I2C.
+#define CST820_SDA 33
+#define CST820_SCL 32
+#define CST820_RST 25
+
+#define WEATHER_UPDATE_INTERVAL_SEC 300
+#define SYSTEM_UPDATE_INTERVAL_SEC  30
+#define TIME_UPDATE_INTERVAL_SEC    3600
+#define AUTO_RETURN_TO_CLOCK_SEC    0
+
+#endif

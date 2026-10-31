@@ -99,7 +99,7 @@ Edit `config.h` in the project:
 
 1. **Open the Project**:
    - In Arduino IDE: **File > Open**
-   - Navigate to `esp32-multi-panel-display/ESP32_MultiPanel_Display.ino`
+   - Navigate to `esp32-multi-panel-display/ESP32_MultiPanel_Display/ESP32_MultiPanel_Display.ino`
 
 2. **Select Board and Port**:
    - **Tools > Board > ESP32 Dev Module**

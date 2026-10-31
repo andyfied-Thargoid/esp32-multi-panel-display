@@ -31,7 +31,7 @@
 
 ## ✅ Project Compilation
 
-**Sketch**: `ESP32_MultiPanel_Display.ino`
+**Canonical sketch**: `ESP32_MultiPanel_Display/ESP32_MultiPanel_Display.ino`
 - **Status**: ✅ Compiles successfully
 - **Flash Size**: 1,086,504 bytes (82% of 4MB flash)
 - **RAM Usage**: 50,480 bytes (15% of 327,680 bytes)
@@ -44,7 +44,7 @@
 # Or open directly from GUI
 arduino-ide --no-sandbox &
 ```
-- File → Open → `esp32-multi-panel-display/ESP32_MultiPanel_Display.ino`
+- File → Open → `esp32-multi-panel-display/ESP32_MultiPanel_Display/ESP32_MultiPanel_Display.ino`
 
 ### 2. Configure Board
 - **Board**: `ESP32 Dev Module`
@@ -66,7 +66,7 @@ Then edit `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h` so the repository s
 The setup explicitly selects `ILI9341_2_DRIVER`, 240x320 dimensions, SPI MISO/MOSI/SCLK 12/13/14, TFT CS/DC 15/2, software reset, GPIO21 active-HIGH backlight, HSPI, and a conservative 27MHz SPI clock. The sketch handles the C revision's CST820 touch separately over I2C (SDA 33, SCL 32, reset 25).
 
 ### 4. Set WiFi Credentials
-Edit `ESP32_MultiPanel_Display/config.h`:
+Copy `config.h.example` to `ESP32_MultiPanel_Display/config.h`, then edit the local copy:
 ```cpp
 #define WIFI_SSID     "your_wifi_name"
 #define WIFI_PASSWORD "your_wifi_password"

@@ -55,8 +55,8 @@ See `SETUP_SUMMARY.md` for detailed installation status, or `UPLOAD_INSTRUCTIONS
 
 ### Configuration
 
-1. Copy `config.h.example` to `config.h`
-2. Edit `config.h` with your credentials:
+1. Copy `config.h.example` to `ESP32_MultiPanel_Display/config.h`
+2. Edit `ESP32_MultiPanel_Display/config.h` with your credentials:
    ```cpp
    #define WIFI_SSID     "your_wifi_network"
    #define WIFI_PASSWORD "your_wifi_password"
@@ -72,8 +72,9 @@ See `SETUP_SUMMARY.md` for detailed installation status, or `UPLOAD_INSTRUCTIONS
 
 ```
 esp32-display/
-├── ESP32_MultiPanel_Display.ino    # Main sketch
-├── config.h                          # Configuration (copy from example)
+├── ESP32_MultiPanel_Display/
+│   └── ESP32_MultiPanel_Display.ino  # Canonical sketch
+├── config.h.example                  # Credential-free configuration template
 └── README.md                         # This file
 ```
 
