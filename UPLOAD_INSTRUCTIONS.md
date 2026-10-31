@@ -5,7 +5,7 @@
 ### Board Overview
 - **Board**: ESP32-2432S028C (2.8" TFT with touch)
 - **Display**: 240x320 pixels, IPS LCD
-- **Touch Controller**: XPT2046 (SPI)
+- **Touch Controller**: CST820 capacitive controller (I2C)
 - **MCU**: ESP32-WROOM-32
 
 ### USB Connection
@@ -53,7 +53,7 @@ In Arduino IDE **Sketch > Include Library > Manage Libraries**:
 - Search for and install:
   - **TFT_eSPI** by Bodmer (v2.5.44+)
   - **ArduinoJson** by Benoit Blanchon (v6.x or v7.x)
-  - **XPT2046_Touchscreen** by Paul Stoffregen (v1.4+)
+  - No external touch library is required; the firmware uses `Wire` for CST820 I2C
   - **Time** by Paul Stoffregen (v1.6+)
   - **NTPClient** by Rob Tillaart (v3.x+)
 
@@ -77,7 +77,9 @@ For ESP32-2432S028C, you must configure the display:
    #define TFT_CS   15
    #define TFT_DC    2
    #define TFT_RST   4  // or -1 for software reset
-   #define TOUCH_CS  33
+   #define CST820_SDA 33
+   #define CST820_SCL 32
+   #define CST820_RST 25
    ```
 
 ### 5. Configure WiFi Credentials
@@ -162,11 +164,12 @@ esptool.py --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard
 **Solutions**:
 - Check TFT_eSPI `User_Setup.h` has correct touch pins:
   ```cpp
-  #define TOUCH_CS 33
-  #define XPT2046_IRQ 25
+  #define CST820_SDA 33
+  #define CST820_SCL 32
+  #define CST820_RST 25
   ```
-- Calibrate touch: Use `XPT2046_Touchscreen` calibration examples
-- Check SPI clock speed (reduce if unstable)
+- Verify CST820 I2C wiring and the `CST820 touch initialized` serial message
+- Check I2C wiring and address `0x15` if touch is not detected
 
 #### 4. **Display Not Initializing**
 **Symptoms**: Screen stays black or shows artifacts
@@ -225,9 +228,9 @@ If display/touch issues persist, verify pin mapping:
    - USB may not provide sufficient power for full brightness
 
 2. **Touch Calibration**:
-   - XPT2046 may need calibration for accurate touch response
+   - CST820 coordinate mapping may need adjustment for a different panel orientation
    - Touch coordinates may be reversed depending on mounting
-   - Use `XPT2046_Touchscreen` examples for calibration
+   - Confirm the CST820 reset line is connected to GPIO25
 
 3. **Display Orientation**:
    - Default rotation: Portrait (1)

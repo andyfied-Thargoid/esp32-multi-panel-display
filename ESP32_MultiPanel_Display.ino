@@ -20,6 +20,7 @@
  */
 
 #include <SPI.h>
+#include <Wire.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <TimeLib.h>
@@ -40,18 +41,49 @@
 #define TFT_DC   2
 #define TFT_RST  -1  // Use software reset
 
-#define TOUCH_CS  33
-#define TOUCH_IRQ 25
+#define CST820_SDA  33
+#define CST820_SCL  32
+#define CST820_RST  25
+#define CST820_ADDR 0x15
 
 #define TFT_WIDTH  240
 #define TFT_HEIGHT 320
 
-// Touch controller (XPT2046)
-#define XPT2046_IRQ TOUCH_IRQ
-#define XPT2046_CS  TOUCH_CS
+// ESP32-2432S028C (C revision): CST820 capacitive touch over I2C.
+class CST820Touch {
+ public:
+  void begin() {
+    pinMode(CST820_RST, OUTPUT);
+    digitalWrite(CST820_RST, LOW);
+    delay(5);
+    digitalWrite(CST820_RST, HIGH);
+    Wire.begin(CST820_SDA, CST820_SCL);
+    delay(50);
+  }
 
-#include <XPT2046_Touchscreen.h>
-#include <SPI.h>
+  bool touched() {
+    uint8_t points = 0;
+    return readRegister(0x02, &points, 1) && (points & 0x0F) != 0;
+  }
+
+  bool getPoint(uint16_t &x, uint16_t &y) {
+    uint8_t data[4] = {};
+    if (!readRegister(0x03, data, sizeof(data))) return false;
+    x = ((data[0] & 0x0F) << 8) | data[1];
+    y = ((data[2] & 0x0F) << 8) | data[3];
+    return true;
+  }
+
+ private:
+  bool readRegister(uint8_t reg, uint8_t *data, size_t length) {
+    Wire.beginTransmission(CST820_ADDR);
+    Wire.write(reg);
+    if (Wire.endTransmission(false) != 0) return false;
+    if (Wire.requestFrom(CST820_ADDR, length) != length) return false;
+    for (size_t i = 0; i < length; ++i) data[i] = Wire.read();
+    return true;
+  }
+};
 
 // ============================================================================
 // FreeRTOS Task Handles
@@ -63,7 +95,7 @@ TaskHandle_t networkTaskHandle = nullptr;
 // Global State
 // ============================================================================
 TFT_eSPI tft = TFT_eSPI();
-XPT2046_Touchscreen ts(XPT2046_CS);
+CST820Touch ts;
 
 // Time state
 unsigned long lastTimeSync = 0;
@@ -491,12 +523,16 @@ void handleTouch() {
     return;
   }
 
-  TS_Point p = ts.getPoint();
+  uint16_t rawX = 0;
+  uint16_t rawY = 0;
+  if (!ts.getPoint(rawX, rawY)) {
+    isTouched = false;
+    return;
+  }
 
-  // Scale touch coordinates to screen size
-  // XPT2046 typically returns 0-4096 range
-  int touchX = map(p.x, 4096, 0, 0, TFT_WIDTH);
-  int touchY = map(p.y, 4096, 0, 0, TFT_HEIGHT);
+  // CST820 reports native portrait coordinates; map them to the landscape TFT.
+  int touchX = map(rawY, 0, TFT_HEIGHT, 0, TFT_WIDTH);
+  int touchY = map(rawX, 0, TFT_WIDTH, TFT_HEIGHT, 0);
 
   // Ensure within bounds
   touchX = constrain(touchX, 0, TFT_WIDTH - 1);
@@ -647,10 +683,9 @@ void setup() {
 
   Serial.println("TFT initialized");
 
-  // Initialize Touch
+  // Initialize the CST820 capacitive touch controller over I2C.
   ts.begin();
-  ts.setResolution(TFT_WIDTH, TFT_HEIGHT);
-  Serial.println("Touch initialized");
+  Serial.println("CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)");
 
   // Create FreeRTOS tasks
   xTaskCreate(displayTask, "Display", 4096, NULL, 2, &displayTaskHandle);

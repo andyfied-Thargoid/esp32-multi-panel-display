@@ -128,7 +128,7 @@ Require at least:
 - application boot banner
 - `LittleFS mounted`
 - `TFT initialized`
-- `Touch initialized`
+- `CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)`
 - no Guru Meditation or reboot loop
 
 Serial output cannot prove the physical display image. Visual acceptance still requires looking at the TFT or a trusted camera capture.

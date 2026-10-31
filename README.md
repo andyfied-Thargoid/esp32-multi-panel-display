@@ -15,7 +15,7 @@ A multi-panel TFT display project for the ESP32-2432S028C (2.8" 240x320 display)
 
 ## Hardware Requirements
 
-- **ESP32-2432S028C** (2.8" 240x320 TFT with XPT2046 touch controller)
+- **ESP32-2432S028C** (2.8" 240x320 TFT with CST820 capacitive touch controller)
 - USB-C micro-USB cable for programming and power
 - WiFi network access
 - Access to compute01 (192.168.1.92) for system monitoring
@@ -44,7 +44,7 @@ See `SETUP_SUMMARY.md` for detailed installation status, or `UPLOAD_INSTRUCTIONS
 2. **Install Required Libraries:**
    - `TFT_eSPI` by Bodmer
    - `ArduinoJson` by Benoit Blanchon
-   - `XPT2046_Touchscreen` by Steven M. Jones
+   - CST820 capacitive touch is handled over I2C by the firmware
    - `Time` by Paul Stoffregen
    - `NTPClient` by tzapu
 
@@ -89,8 +89,9 @@ The ESP32-2432S028C has integrated display and touch controller. The board uses:
 | TFT_MOSI | 13 | SPI MOSI (fixed) |
 | TFT_MISO | 12 | SPI MISO (fixed) |
 | TFT_SCLK | 14 | SPI Clock (fixed) |
-| TOUCH_CS | 33 | Touch chip select |
-| TOUCH_IRQ | 25 | Touch interrupt |
+| CST820_SDA | 33 | Capacitive touch I2C SDA |
+| CST820_SCL | 32 | Capacitive touch I2C SCL |
+| CST820_RST | 25 | Capacitive touch reset |
 
 **Note:** The ESP32-2432S028C board has these pins pre-wired. You typically don't need to connect anything externally unless modifying the setup.
 
@@ -159,10 +160,10 @@ DCGM_FI_DEV_GPU_TEMP{gpu="1"}
 ### Display shows but no touch response
 
 1. Verify touch controller is initialized:
-   - Check Serial output for "Touch initialized"
+   - Check Serial output for "CST820 touch initialized"
 2. Try recalibrating touch:
-   - Modify `ts.setResolution()` in config to match your screen size
-3. Check XPT2046 library installation
+   - Check the CST820 I2C wiring: SDA=GPIO33, SCL=GPIO32, reset=GPIO25
+3. Confirm the board is the C revision with a CST820 capacitive touch controller
 
 ### WiFi not connecting
 

@@ -23,7 +23,7 @@
 |---------|---------|----------|
 | TFT_eSPI | 2.5.44 | `~/Arduino/libraries/TFT_eSPI` |
 | ArduinoJson | 7.4.2 | `~/Arduino/libraries/ArduinoJson` |
-| XPT2046_Touchscreen | 1.4 | `~/Arduino/libraries/XPT2046_Touchscreen` |
+| CST820 touch | built-in Wire I2C implementation | GPIO33 SDA / GPIO32 SCL / GPIO25 reset |
 | Time | 1.6.1 | `~/Arduino/libraries/Time` |
 | NTPClient | 3.2.1 | `~/Arduino/libraries/NTPClient` |
 | Arduino_GFX | latest | `~/.arduino15/libraries/Arduino_GFX` |
