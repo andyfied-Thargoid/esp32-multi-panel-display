@@ -126,8 +126,9 @@ const unsigned long WEATHER_UPDATE_INTERVAL = 300000;  // 5 minutes
 // System state
 float gtx1650Temp = 0.0;
 float p40Temp = 0.0;
-bool qwen35Running = false;
-bool ministralRunning = false;
+enum ModelStatus { MODEL_UNKNOWN, MODEL_OFFLINE, MODEL_RUNNING };
+ModelStatus qwen35Status = MODEL_UNKNOWN;
+ModelStatus ministralStatus = MODEL_UNKNOWN;
 float ramUsage = 0.0;
 float diskUsage = 0.0;
 unsigned long lastSystemUpdate = 0;
@@ -266,7 +267,9 @@ void drawSystemPanel() {
   tft.setCursor(5, 5);
   tft.print(smallTime);
 
-  // Title
+  // Title. GPU/RAM/disk values below are placeholders until a read-only
+  // monitoring endpoint is available; label them so they are not mistaken for
+  // live measurements.
   tft.setTextColor(0x07FF, 0x0010);  // Cyan
   tft.setTextSize(2);
   tft.setCursor(5, 25);
@@ -276,7 +279,7 @@ void drawSystemPanel() {
   tft.setTextColor(0xFFFF, 0x0010);  // Yellow
   tft.setTextSize(1);
   tft.setCursor(5, 45);
-  tft.print("GTX 1650: ");
+  tft.print("GTX 1650 demo: ");
   tft.setTextColor(0x0414, 0x0010);  // Green
   char gtxTempStr[10];
   sprintf(gtxTempStr, "%.1f°C", gtx1650Temp);
@@ -284,7 +287,7 @@ void drawSystemPanel() {
 
   tft.setCursor(5, 60);
   tft.setTextColor(0xFFFF, 0x0010);
-  tft.print("P40 GPU:  ");
+  tft.print("P40 GPU demo: ");
   tft.setTextColor(0x0414, 0x0010);
   char p40TempStr[10];
   sprintf(p40TempStr, "%.1f°C", p40Temp);
@@ -294,19 +297,23 @@ void drawSystemPanel() {
   tft.setCursor(5, 85);
   tft.setTextColor(0xFFFF, 0x0010);
   tft.print("Qwen3.5: ");
-  tft.setTextColor(qwen35Running ? 0x07FF : 0x05A0, 0x0010);
-  tft.print(qwen35Running ? "RUNNING" : "OFFLINE");
+  tft.setTextColor(qwen35Status == MODEL_RUNNING ? 0x07FF :
+                   qwen35Status == MODEL_UNKNOWN ? 0xFFE0 : 0x05A0, 0x0010);
+  tft.print(qwen35Status == MODEL_RUNNING ? "RUNNING" :
+            qwen35Status == MODEL_UNKNOWN ? "UNKNOWN" : "OFFLINE");
 
   tft.setCursor(5, 100);
   tft.setTextColor(0xFFFF, 0x0010);
   tft.print("Ministral: ");
-  tft.setTextColor(ministralRunning ? 0x07FF : 0x05A0, 0x0010);
-  tft.print(ministralRunning ? "RUNNING" : "OFFLINE");
+  tft.setTextColor(ministralStatus == MODEL_RUNNING ? 0x07FF :
+                   ministralStatus == MODEL_UNKNOWN ? 0xFFE0 : 0x05A0, 0x0010);
+  tft.print(ministralStatus == MODEL_RUNNING ? "RUNNING" :
+            ministralStatus == MODEL_UNKNOWN ? "UNKNOWN" : "OFFLINE");
 
   // RAM/Disk Usage Gauges (text-based)
   tft.setCursor(5, 130);
   tft.setTextColor(0xFFFF, 0x0010);
-  tft.print("RAM: ");
+  tft.print("RAM demo: ");
   tft.setTextColor(0x07FF, 0x0010);
   char ramStr[10];
   sprintf(ramStr, "%.1f%%", ramUsage);
@@ -317,7 +324,7 @@ void drawSystemPanel() {
 
   tft.setCursor(5, 170);
   tft.setTextColor(0xFFFF, 0x0010);
-  tft.print("Disk: ");
+  tft.print("Disk demo: ");
   tft.setTextColor(0x07FF, 0x0010);
   char diskStr[10];
   sprintf(diskStr, "%.1f%%", diskUsage);
@@ -332,12 +339,13 @@ void drawSystemPanel() {
   tft.setCursor(5, TFT_HEIGHT - 40);
   tft.print("GTX 1650 Model: ");
   tft.setTextColor(0x07FF, 0x0010);
-  tft.print(qwen35Running ? "Qwen3.5" : "N/A");
+  tft.print(qwen35Status == MODEL_RUNNING ? "Qwen3.5" : "N/A");
 
   tft.setCursor(5, TFT_HEIGHT - 25);
   tft.print("GTX Ministral: ");
   tft.setTextColor(0x07FF, 0x0010);
-  tft.print(ministralRunning ? "Running" : "Stopped");
+  tft.print(ministralStatus == MODEL_RUNNING ? "Running" :
+            ministralStatus == MODEL_UNKNOWN ? "Unknown" : "Offline");
 
   // WiFi indicator
   drawWiFiIndicator(5, 45);
@@ -468,7 +476,14 @@ void fetchWeather() {
 
 // Fetch system metrics from compute01
 void fetchSystemMetrics() {
+  // Reset every cycle so a failed request cannot leave a stale RUNNING state.
+  qwen35Status = MODEL_UNKNOWN;
+  ministralStatus = MODEL_UNKNOWN;
+
   if (WiFi.status() != WL_CONNECTED) {
+    qwen35Status = MODEL_OFFLINE;
+    ministralStatus = MODEL_OFFLINE;
+    systemDataChanged = true;
     return;
   }
 
@@ -481,12 +496,12 @@ void fetchSystemMetrics() {
   http.begin(healthUrl);
   int httpCode = http.GET();
 
-  if (httpCode > 0) {
+  if (httpCode >= 200 && httpCode < 300) {
     String payload = http.getString();
-    // Check if qwen models are running via string search
-    if (payload.indexOf("qwen") >= 0) {
-      qwen35Running = true;
-    }
+    // A successful health response is only RUNNING when it names qwen.
+    qwen35Status = payload.indexOf("qwen") >= 0 ? MODEL_RUNNING : MODEL_OFFLINE;
+  } else if (httpCode == 404) {
+    qwen35Status = MODEL_OFFLINE;
   }
   http.end();
 
@@ -498,8 +513,10 @@ void fetchSystemMetrics() {
   http2.begin(ministralUrl);
   httpCode = http2.GET();
 
-  if (httpCode > 0) {
-    ministralRunning = true;
+  if (httpCode >= 200 && httpCode < 300) {
+    ministralStatus = MODEL_RUNNING;
+  } else if (httpCode == 404) {
+    ministralStatus = MODEL_OFFLINE;
   }
   http2.end();
 
