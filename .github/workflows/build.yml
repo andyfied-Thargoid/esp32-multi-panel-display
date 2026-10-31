@@ -16,10 +16,10 @@ jobs:
           arduino-cli core install esp32:esp32@3.3.12
       - name: Install libraries
         run: |
-          arduino-cli lib install "TFT_eSPI@2.5.44"
-          arduino-cli lib install "ArduinoJson@7.4.2"
-          arduino-cli lib install "NTPClient@3.2.1"
-          arduino-cli lib install "Time@1.6.1"
+          arduino-cli lib install TFT_eSPI
+          arduino-cli lib install ArduinoJson
+          arduino-cli lib install NTPClient
+          arduino-cli lib install Time
       - name: Select verified CYD display setup
         run: |
           setup_dir="$HOME/Arduino/libraries/TFT_eSPI/User_Setups"
