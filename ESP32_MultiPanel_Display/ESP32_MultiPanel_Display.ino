@@ -132,7 +132,8 @@ String weatherIcon = "";
 unsigned long lastWeatherUpdate = 0;
 volatile bool weatherDataChanged = true;
 SemaphoreHandle_t weatherMutex = nullptr;
-const unsigned long WEATHER_UPDATE_INTERVAL = 300000;  // 5 minutes
+const unsigned long WEATHER_UPDATE_INTERVAL =
+    WEATHER_UPDATE_INTERVAL_SEC * 1000UL;
 
 // System state
 float gtx1650Temp = 0.0;
@@ -144,7 +145,10 @@ float ramUsage = 0.0;
 float diskUsage = 0.0;
 unsigned long lastSystemUpdate = 0;
 volatile bool systemDataChanged = true;
-const unsigned long SYSTEM_UPDATE_INTERVAL = 30000;  // 30 seconds
+const unsigned long SYSTEM_UPDATE_INTERVAL =
+    SYSTEM_UPDATE_INTERVAL_SEC * 1000UL;
+const unsigned long TIME_UPDATE_INTERVAL =
+    TIME_UPDATE_INTERVAL_SEC * 1000UL;
 const uint16_t HTTP_CONNECT_TIMEOUT_MS = 5000;
 const uint16_t HTTP_REQUEST_TIMEOUT_MS = 8000;
 
@@ -773,22 +777,23 @@ void networkTask(void* parameter) {
   unsigned long lastSystemFetch = millis();
 
   while (true) {
-    // Update time periodically (every hour). A newly successful sync also
+    // Update time at the configured interval. A newly successful sync also
     // triggers the first weather request when boot synchronization failed.
-    if (!timeSynchronized || millis() - lastTimeSync >= 3600000) {
+    if (!timeSynchronized ||
+        millis() - lastTimeSync >= TIME_UPDATE_INTERVAL) {
       if (fetchTime()) {
         fetchWeather();
         lastWeatherFetch = millis();
       }
     }
 
-    // Fetch weather every 5 minutes
+    // Fetch weather at the configured interval
     if (millis() - lastWeatherFetch >= WEATHER_UPDATE_INTERVAL) {
       fetchWeather();
       lastWeatherFetch = millis();
     }
 
-    // Fetch system metrics every 30 seconds
+    // Fetch system metrics at the configured interval
     if (millis() - lastSystemFetch >= SYSTEM_UPDATE_INTERVAL) {
       fetchSystemMetrics();
       lastSystemFetch = millis();
