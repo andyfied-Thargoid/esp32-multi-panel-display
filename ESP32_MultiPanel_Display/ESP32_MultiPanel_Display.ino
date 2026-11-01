@@ -244,15 +244,15 @@ void drawWeatherPanel() {
   tft.setCursor(5, 25);
   tft.print(citySnapshot);
 
-  // Weather icon (using text symbol for simplicity)
+  // Weather icon (using an ASCII-safe text label for the configured bitmap font)
+  const char* iconChar = getWeatherIcon(conditionSnapshot);
   tft.setTextColor(0xFFE0, 0x0019);  // Orange on dark blue
-  tft.setTextSize(6);
-  int iconX = (SCREEN_WIDTH - 120) / 2;
+  // The fallback label is seven characters; use a smaller size for it and
+  // centre every label from its measured width to prevent clipping.
+  tft.setTextSize(strcmp(iconChar, "WEATHER") == 0 ? 3 : 6);
+  int iconX = (SCREEN_WIDTH - tft.textWidth(iconChar)) / 2;
   int iconY = 70;
   tft.setCursor(iconX, iconY);
-
-  // Weather condition icon mapping
-  const char* iconChar = getWeatherIcon(conditionSnapshot);
   tft.print(iconChar);
 
   // Temperature - large display
