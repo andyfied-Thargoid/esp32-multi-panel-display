@@ -148,8 +148,8 @@ const unsigned long SYSTEM_UPDATE_INTERVAL = 30000;  // 30 seconds
 const uint16_t HTTP_CONNECT_TIMEOUT_MS = 5000;
 const uint16_t HTTP_REQUEST_TIMEOUT_MS = 8000;
 
-// API endpoints (compute01 is on 192.168.1.92 per hardware manifest)
-const String COMPUTE01_HOST_STR = "192.168.1.92";
+// API endpoints; the server address comes from the local config.h.
+const String COMPUTE01_HOST_STR = COMPUTE01_HOST;
 #ifndef QWEN_MODEL_ID
 #define QWEN_MODEL_ID "qwen35-q3"
 #endif
