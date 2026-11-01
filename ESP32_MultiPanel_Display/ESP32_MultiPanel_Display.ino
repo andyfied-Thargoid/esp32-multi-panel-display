@@ -208,17 +208,22 @@ void drawClockPanel() {
   tft.print(smallTime);
 }
 
+void drawContextClock(uint16_t backgroundColor) {
+  tft.fillRect(0, 0, 90, 16, backgroundColor);
+  char smallTime[16];
+  sprintf(smallTime, "%02d:%02d:%02d", hour(), minute(), second());
+  tft.setTextColor(0xFFFF, backgroundColor);
+  tft.setTextSize(1);
+  tft.setCursor(5, 5);
+  tft.print(smallTime);
+}
+
 // Draw weather panel
 void drawWeatherPanel() {
   drawBackground(0x0019);  // Dark blue background
 
   // Small clock in top left
-  char smallTime[16];
-  sprintf(smallTime, "%02d:%02d:%02d", hour(), minute(), second());
-  tft.setTextColor(0xFFFF, 0x0000);  // Yellow
-  tft.setTextSize(1);
-  tft.setCursor(5, 5);
-  tft.print(smallTime);
+  drawContextClock(0x0019);
 
   String citySnapshot;
   String conditionSnapshot;
@@ -283,12 +288,7 @@ void drawSystemPanel() {
   drawBackground(0x0010);  // Dark green background
 
   // Small clock in top left
-  char smallTime[16];
-  sprintf(smallTime, "%02d:%02d:%02d", hour(), minute(), second());
-  tft.setTextColor(0xFFFF, 0x0000);  // Yellow
-  tft.setTextSize(1);
-  tft.setCursor(5, 5);
-  tft.print(smallTime);
+  drawContextClock(0x0010);
 
   // Title. GPU/RAM/disk values below are placeholders until a read-only
   // monitoring endpoint is available; label them so they are not mistaken for
@@ -659,6 +659,7 @@ void handleTouch() {
 void displayTask(void* parameter) {
   int lastPanel = -1;
   unsigned long lastUpdate = millis();
+  unsigned long lastContextClockUpdate = 0;
 
   while (true) {
     // Handle touch
@@ -679,6 +680,7 @@ void displayTask(void* parameter) {
         panelNeedsRedraw = true;
       }
 
+      const unsigned long now = millis();
       if (panelNeedsRedraw) {
         switch (currentPanel) {
           case 0:
@@ -692,9 +694,15 @@ void displayTask(void* parameter) {
             break;
         }
         lastPanel = currentPanel;
+        lastContextClockUpdate = now;
       } else if (currentPanel == 0) {
         // Clock content changes frequently, so keep its existing redraw behavior.
         drawClockPanel();
+      } else if (now - lastContextClockUpdate >= 1000) {
+        // Refresh only the small context clock once per second; preserve the
+        // weather/system data and avoid redrawing the entire panel.
+        drawContextClock(currentPanel == 1 ? 0x0019 : 0x0010);
+        lastContextClockUpdate = now;
       }
     }
 
