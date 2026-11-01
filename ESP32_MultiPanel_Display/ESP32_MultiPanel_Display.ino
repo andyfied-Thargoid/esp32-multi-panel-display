@@ -24,6 +24,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include <TimeLib.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -142,6 +143,12 @@ const unsigned long SYSTEM_UPDATE_INTERVAL = 30000;  // 30 seconds
 
 // API endpoints (compute01 is on 192.168.1.92 per hardware manifest)
 const String COMPUTE01_HOST_STR = "192.168.1.92";
+#ifndef QWEN_MODEL_ID
+#define QWEN_MODEL_ID "qwen35-q3"
+#endif
+#ifndef MINISTRAL_MODEL_ID
+#define MINISTRAL_MODEL_ID "mistralai_Ministral-3-3B-Instruct-2512-IQ3_XS.gguf"
+#endif
 
 // ============================================================================
 // Panel Rendering Functions
@@ -506,6 +513,29 @@ void fetchWeather() {
   https.end();
 }
 
+ModelStatus modelStatusFromResponse(const String &payload, const char *intendedModelId) {
+  JsonDocument document;
+  DeserializationError error = deserializeJson(document, payload);
+  if (error) return MODEL_UNKNOWN;
+
+  JsonArray models = document["data"].as<JsonArray>();
+  if (models.isNull()) return MODEL_UNKNOWN;
+
+  bool found = false;
+  for (JsonObject model : models) {
+    const char *modelId = model["id"] | "";
+    if (strstr(modelId, intendedModelId) == nullptr) continue;
+    found = true;
+
+    JsonVariant statusValue = model["status"]["value"];
+    if (statusValue.isNull()) return MODEL_UNKNOWN;
+    const char *status = statusValue | "";
+    return strcmp(status, "loaded") == 0 ? MODEL_READY : MODEL_OFFLINE;
+  }
+
+  return found ? MODEL_UNKNOWN : MODEL_OFFLINE;
+}
+
 // Fetch system metrics from compute01
 void fetchSystemMetrics() {
   // Reset every cycle so a failed request cannot leave a stale RUNNING state.
@@ -529,10 +559,7 @@ void fetchSystemMetrics() {
   int httpCode = http.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
-    String payload = http.getString();
-    const bool qwenListed = payload.indexOf("qwen35") >= 0;
-    const bool qwenLoaded = payload.indexOf("\"status\":{\"value\":\"loaded\"}") >= 0;
-    qwen35Status = qwenListed && qwenLoaded ? MODEL_READY : MODEL_OFFLINE;
+    qwen35Status = modelStatusFromResponse(http.getString(), QWEN_MODEL_ID);
   } else if (httpCode == 404) {
     qwen35Status = MODEL_OFFLINE;
   }
@@ -547,8 +574,7 @@ void fetchSystemMetrics() {
   httpCode = http2.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
-    String payload = http2.getString();
-    ministralStatus = payload.indexOf("\"data\":[{") >= 0 ? MODEL_READY : MODEL_OFFLINE;
+    ministralStatus = modelStatusFromResponse(http2.getString(), MINISTRAL_MODEL_ID);
   } else if (httpCode == 404) {
     ministralStatus = MODEL_OFFLINE;
   }
