@@ -372,8 +372,8 @@ void drawSystemPanel() {
   tft.print(ministralStatus == MODEL_READY ? "Ready" :
             ministralStatus == MODEL_UNKNOWN ? "Unknown" : "Offline");
 
-  // WiFi indicator
-  drawWiFiIndicator(5, 45);
+  // WiFi indicator in the unused top-right corner; keep it off the GPU rows.
+  drawWiFiIndicator(SCREEN_WIDTH - 80, 5);
 }
 
 // Draw WiFi indicator
