@@ -125,8 +125,8 @@ The System Monitor panel fetches data from compute01's services:
 
 | Service | Port | Endpoint | Purpose |
 |---------|------|----------|---------|
-| llama-swap | 11439 | `/health` | Qwen3.5 model status |
-| Ministral | 11438 | `/health` | Ministral model status |
+| llama-swap | 11439 | `/v1/models` | Qwen3.5 model ID and readiness status |
+| Ministral | 11438 | `/v1/models` | Ministral model ID and availability |
 | Grafana | 3000 | N/A | Dashboard UI (not directly used) |
 | Prometheus | 9090 | `/api/v1/query` | GPU/RAM/disk metrics |
 
@@ -184,10 +184,14 @@ DCGM_FI_DEV_GPU_TEMP{gpu="1"}
    ```bash
    ping 192.168.1.92
    ```
-2. Check llama-swap is running:
+2. Check both model APIs expose their model lists:
    ```bash
-   curl http://127.0.0.1:11439/health
+   curl http://127.0.0.1:11439/v1/models
+   curl http://127.0.0.1:11438/v1/models
    ```
+   The Qwen response must contain the configured model ID with a loaded `status.value`.
+   The Ministral response must contain the configured model ID; its standalone server may omit `status.value`.
+   A `/health` response is not used by the firmware for model status.
 3. Ensure ESP32 and compute01 are on the same network
 
 ### Panel transitions are slow
