@@ -4,7 +4,7 @@
 
 ### Board Overview
 - **Board**: ESP32-2432S028C (2.8" TFT with touch)
-- **Display**: 240x320 pixels, IPS LCD
+- **Display**: 320x240 landscape framebuffer (240x320 native panel), IPS LCD
 - **Touch Controller**: CST820 capacitive controller (I2C)
 - **MCU**: ESP32-WROOM-32
 
@@ -201,7 +201,7 @@ esptool.py --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard
 **Solutions**:
 - Check `WEATHER_API_KEY` in `config.h` (get free key from openweathermap.org)
 - Verify internet connectivity (check Serial Monitor for IP address)
-- Check firewall blocking outbound HTTP requests
+- Check firewall blocking outbound HTTPS requests
 
 ### Debugging Tips
 

@@ -63,7 +63,7 @@ Then edit `~/Arduino/libraries/TFT_eSPI/User_Setup_Select.h` so the repository s
 ```cpp
 #include <User_Setups/Setup801_ESP32_CYD_ILI9341_240x320.h>
 ```
-The setup explicitly selects `ILI9341_2_DRIVER`, 240x320 dimensions, SPI MISO/MOSI/SCLK 12/13/14, TFT CS/DC 15/2, software reset, GPIO21 active-HIGH backlight, HSPI, and a conservative 27MHz SPI clock. The sketch handles the C revision's CST820 touch separately over I2C (SDA 33, SCL 32, reset 25).
+The setup explicitly selects `ILI9341_2_DRIVER` with the panel's native 240x320 dimensions; the sketch rotates it to a 320x240 landscape framebuffer, SPI MISO/MOSI/SCLK 12/13/14, TFT CS/DC 15/2, software reset, GPIO21 active-HIGH backlight, HSPI, and a conservative 27MHz SPI clock. The sketch handles the C revision's CST820 touch separately over I2C (SDA 33, SCL 32, reset 25).
 
 ### 4. Set WiFi Credentials
 Copy `config.h.example` to `ESP32_MultiPanel_Display/config.h`, then edit the local copy:

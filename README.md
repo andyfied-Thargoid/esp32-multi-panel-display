@@ -1,6 +1,6 @@
 # ESP32 Multi-Panel Display
 
-A multi-panel TFT display project for the ESP32-2432S028C (2.8" 240x320 display) that cycles through Clock, Weather, and compute01 System Monitor panels with touch navigation.
+A multi-panel TFT display project for the ESP32-2432S028C (2.8" 240x320 native display used as a 320x240 landscape framebuffer) that cycles through Clock, Weather, and compute01 System Monitor panels with touch navigation.
 
 ## Features
 
@@ -15,7 +15,7 @@ A multi-panel TFT display project for the ESP32-2432S028C (2.8" 240x320 display)
 
 ## Hardware Requirements
 
-- **ESP32-2432S028C** (2.8" 240x320 TFT with CST820 capacitive touch controller)
+- **ESP32-2432S028C** (2.8" 240x320 native TFT, 320x240 landscape framebuffer, CST820 capacitive touch)
 - USB-C micro-USB cable for programming and power
 - WiFi network access
 - Access to compute01 (192.168.1.92) for system monitoring

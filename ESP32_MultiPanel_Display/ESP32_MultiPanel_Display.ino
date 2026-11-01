@@ -48,8 +48,8 @@
 #define CST820_RST  25
 #define CST820_ADDR 0x15
 
-#define TFT_WIDTH  240
-#define TFT_HEIGHT 320
+#define SCREEN_WIDTH  320
+#define SCREEN_HEIGHT 240
 
 // ESP32-2432S028C (C revision): CST820 capacitive touch over I2C.
 class CST820Touch {
@@ -106,6 +106,8 @@ time_t currentTime = 0;
 // Touch state
 uint16_t lastTouchX = 0, lastTouchY = 0;
 uint16_t lastPressX = 0, lastPressY = 0;
+bool timeSynchronized = false;
+
 bool isTouched = false;  // Current physical press state.
 unsigned long lastTapTime = 0;
 unsigned long lastReleaseTime = 0;
@@ -123,12 +125,13 @@ String weatherCondition = "";
 String weatherIcon = "";
 unsigned long lastWeatherUpdate = 0;
 volatile bool weatherDataChanged = true;
+SemaphoreHandle_t weatherMutex = nullptr;
 const unsigned long WEATHER_UPDATE_INTERVAL = 300000;  // 5 minutes
 
 // System state
 float gtx1650Temp = 0.0;
 float p40Temp = 0.0;
-enum ModelStatus { MODEL_UNKNOWN, MODEL_OFFLINE, MODEL_RUNNING };
+enum ModelStatus { MODEL_UNKNOWN, MODEL_OFFLINE, MODEL_READY };
 ModelStatus qwen35Status = MODEL_UNKNOWN;
 ModelStatus ministralStatus = MODEL_UNKNOWN;
 float ramUsage = 0.0;
@@ -146,7 +149,7 @@ const String COMPUTE01_HOST_STR = "192.168.1.92";
 
 // Draw background
 void drawBackground(int color) {
-  tft.fillRect(0, 0, TFT_WIDTH, TFT_HEIGHT, color);
+  tft.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, color);
 }
 
 // Draw clock panel (Primary - dominant)
@@ -162,8 +165,8 @@ void drawClockPanel() {
   sprintf(timeStr, "%02d:%02d:%02d", hour(), minute(), second());
 
   // Calculate position for centered display
-  int x = (TFT_WIDTH - tft.textWidth(timeStr)) / 2;
-  int y = (TFT_HEIGHT - tft.fontHeight(5)) / 2 - 20;
+  int x = (SCREEN_WIDTH - tft.textWidth(timeStr)) / 2;
+  int y = (SCREEN_HEIGHT - tft.fontHeight(5)) / 2 - 20;
 
   tft.setCursor(x, y);
   tft.print(timeStr);
@@ -180,7 +183,7 @@ void drawClockPanel() {
           monthStr(month()),
           year());
 
-  int dateX = (TFT_WIDTH - tft.textWidth(dateStr)) / 2;
+  int dateX = (SCREEN_WIDTH - tft.textWidth(dateStr)) / 2;
   int dateY = y + tft.fontHeight(5) + 30;
 
   tft.setCursor(dateX, dateY);
@@ -194,7 +197,7 @@ void drawClockPanel() {
   sprintf(smallTime, "%02d:%02d", hour(), minute());
   tft.setTextSize(1);
   tft.setTextColor(0x0419, 0x0000);  // Dark blue
-  tft.setCursor(TFT_WIDTH - tft.textWidth(smallTime) - 5, TFT_HEIGHT - 20);
+  tft.setCursor(SCREEN_WIDTH - tft.textWidth(smallTime) - 5, SCREEN_HEIGHT - 20);
   tft.print(smallTime);
 }
 
@@ -210,30 +213,41 @@ void drawWeatherPanel() {
   tft.setCursor(5, 5);
   tft.print(smallTime);
 
+  String citySnapshot;
+  String conditionSnapshot;
+  float temperatureSnapshot;
+  unsigned long weatherUpdateSnapshot;
+  if (weatherMutex != nullptr) xSemaphoreTake(weatherMutex, portMAX_DELAY);
+  citySnapshot = weatherCity;
+  conditionSnapshot = weatherCondition;
+  temperatureSnapshot = weatherTemp;
+  weatherUpdateSnapshot = lastWeatherUpdate;
+  if (weatherMutex != nullptr) xSemaphoreGive(weatherMutex);
+
   // Location at top
   tft.setTextColor(0xFFFF, 0x0019);  // Yellow on dark blue
   tft.setTextSize(2);
   tft.setCursor(5, 25);
-  tft.print(weatherCity);
+  tft.print(citySnapshot);
 
   // Weather icon (using text symbol for simplicity)
   tft.setTextColor(0xFFE0, 0x0019);  // Orange on dark blue
   tft.setTextSize(6);
-  int iconX = (TFT_WIDTH - 120) / 2;
+  int iconX = (SCREEN_WIDTH - 120) / 2;
   int iconY = 70;
   tft.setCursor(iconX, iconY);
 
   // Weather condition icon mapping
-  String iconChar = getWeatherIcon(weatherCondition);
+  const char* iconChar = getWeatherIcon(conditionSnapshot);
   tft.print(iconChar);
 
   // Temperature - large display
   tft.setTextColor(0xFFFF, 0x0019);
   tft.setTextSize(6);
   char tempStr[16];
-  sprintf(tempStr, "%d°C", (int)weatherTemp);
+  sprintf(tempStr, "%dC", (int)temperatureSnapshot);
 
-  int tempX = (TFT_WIDTH - tft.textWidth(tempStr)) / 2;
+  int tempX = (SCREEN_WIDTH - tft.textWidth(tempStr)) / 2;
   int tempY = iconY + 60;
   tft.setCursor(tempX, tempY);
   tft.print(tempStr);
@@ -242,17 +256,17 @@ void drawWeatherPanel() {
   tft.setTextColor(0x07FF, 0x0019);  // Cyan on dark blue
   tft.setTextSize(2);
   tft.setCursor(iconX, tempY + 50);
-  tft.print(weatherCondition);
+  tft.print(conditionSnapshot);
 
   // Draw WiFi indicator
   drawWiFiIndicator(5, 45);
 
   // Update indicator
-  unsigned long elapsed = millis() - lastWeatherUpdate;
+  unsigned long elapsed = millis() - weatherUpdateSnapshot;
   if (elapsed > WEATHER_UPDATE_INTERVAL) {
     tft.setTextSize(1);
     tft.setTextColor(0x05A0, 0x0019);  // Dark green
-    tft.setCursor(5, TFT_HEIGHT - 15);
+    tft.setCursor(5, SCREEN_HEIGHT - 15);
     tft.print("Refreshing in...");
   }
 }
@@ -299,17 +313,17 @@ void drawSystemPanel() {
   tft.setCursor(5, 85);
   tft.setTextColor(0xFFFF, 0x0010);
   tft.print("Qwen3.5: ");
-  tft.setTextColor(qwen35Status == MODEL_RUNNING ? 0x07FF :
+  tft.setTextColor(qwen35Status == MODEL_READY ? 0x07FF :
                    qwen35Status == MODEL_UNKNOWN ? 0xFFE0 : 0x05A0, 0x0010);
-  tft.print(qwen35Status == MODEL_RUNNING ? "RUNNING" :
+  tft.print(qwen35Status == MODEL_READY ? "READY" :
             qwen35Status == MODEL_UNKNOWN ? "UNKNOWN" : "OFFLINE");
 
   tft.setCursor(5, 100);
   tft.setTextColor(0xFFFF, 0x0010);
   tft.print("Ministral: ");
-  tft.setTextColor(ministralStatus == MODEL_RUNNING ? 0x07FF :
+  tft.setTextColor(ministralStatus == MODEL_READY ? 0x07FF :
                    ministralStatus == MODEL_UNKNOWN ? 0xFFE0 : 0x05A0, 0x0010);
-  tft.print(ministralStatus == MODEL_RUNNING ? "RUNNING" :
+  tft.print(ministralStatus == MODEL_READY ? "READY" :
             ministralStatus == MODEL_UNKNOWN ? "UNKNOWN" : "OFFLINE");
 
   // RAM/Disk Usage Gauges (text-based)
@@ -322,7 +336,7 @@ void drawSystemPanel() {
   tft.print(ramStr);
 
   // Draw simple progress bar for RAM
-  drawGaugeBar(5, 145, TFT_WIDTH - 10, 15, ramUsage, 0x001F, 0x07FF, 0x0010);
+  drawGaugeBar(5, 145, SCREEN_WIDTH - 10, 15, ramUsage, 0x001F, 0x07FF, 0x0010);
 
   tft.setCursor(5, 170);
   tft.setTextColor(0xFFFF, 0x0010);
@@ -333,20 +347,20 @@ void drawSystemPanel() {
   tft.print(diskStr);
 
   // Draw simple progress bar for disk
-  drawGaugeBar(5, 185, TFT_WIDTH - 10, 15, diskUsage, 0x001F, 0x07FF, 0x0010);
+  drawGaugeBar(5, 185, SCREEN_WIDTH - 10, 15, diskUsage, 0x001F, 0x07FF, 0x0010);
 
   // Status indicators
   tft.setTextColor(0xFFFF, 0x0010);
   tft.setTextSize(1);
-  tft.setCursor(5, TFT_HEIGHT - 40);
+  tft.setCursor(5, SCREEN_HEIGHT - 40);
   tft.print("GTX 1650 Model: ");
   tft.setTextColor(0x07FF, 0x0010);
-  tft.print(qwen35Status == MODEL_RUNNING ? "Qwen3.5" : "N/A");
+  tft.print(qwen35Status == MODEL_READY ? "Qwen3.5" : "N/A");
 
-  tft.setCursor(5, TFT_HEIGHT - 25);
+  tft.setCursor(5, SCREEN_HEIGHT - 25);
   tft.print("GTX Ministral: ");
   tft.setTextColor(0x07FF, 0x0010);
-  tft.print(ministralStatus == MODEL_RUNNING ? "Running" :
+  tft.print(ministralStatus == MODEL_READY ? "Ready" :
             ministralStatus == MODEL_UNKNOWN ? "Unknown" : "Offline");
 
   // WiFi indicator
@@ -385,26 +399,17 @@ void drawGaugeBar(int x, int y, int width, int height, float percentage,
 }
 
 // Get weather icon character
-String getWeatherIcon(String condition) {
-  condition.toLowerCase();
-
-  if (condition.indexOf("clear") >= 0 || condition.indexOf("sunny") >= 0) {
-    return "☀️";
-  } else if (condition.indexOf("cloud") >= 0 || condition.indexOf("overcast") >= 0) {
-    return "☁️";
-  } else if (condition.indexOf("rain") >= 0 || condition.indexOf("drizzle") >= 0) {
-    return "🌧️";
-  } else if (condition.indexOf("thunder") >= 0 || condition.indexOf("storm") >= 0) {
-    return "⛈️";
-  } else if (condition.indexOf("snow") >= 0) {
-    return "❄️";
-  } else if (condition.indexOf("fog") >= 0 || condition.indexOf("mist") >= 0) {
-    return "🌫️";
-  } else if (condition.indexOf("partly") >= 0) {
-    return "⛅";
-  } else {
-    return "🌤️";  // Default
-  }
+const char* getWeatherIcon(const String &condition) {
+  String normalized = condition;
+  normalized.toLowerCase();
+  if (normalized.indexOf("clear") >= 0 || normalized.indexOf("sunny") >= 0) return "SUN";
+  if (normalized.indexOf("cloud") >= 0 || normalized.indexOf("overcast") >= 0) return "CLOUD";
+  if (normalized.indexOf("rain") >= 0 || normalized.indexOf("drizzle") >= 0) return "RAIN";
+  if (normalized.indexOf("thunder") >= 0 || normalized.indexOf("storm") >= 0) return "STORM";
+  if (normalized.indexOf("snow") >= 0) return "SNOW";
+  if (normalized.indexOf("fog") >= 0 || normalized.indexOf("mist") >= 0) return "FOG";
+  if (normalized.indexOf("partly") >= 0) return "PARTLY";
+  return "WEATHER";
 }
 
 // ============================================================================
@@ -412,22 +417,28 @@ String getWeatherIcon(String condition) {
 // ============================================================================
 
 // Fetch time from NTP server
-void fetchTime() {
-  static WiFiUDP ntpUDP;
-  static NTPClient timeClient(ntpUDP, NTP_SERVER, TIMEZONE_OFFSET, UPDATE_INTERVAL);
-
-  timeClient.begin();
-  timeClient.update();
-
-  currentTime = timeClient.getEpochTime();
-  setTime(currentTime);
-
+bool fetchTime() {
+  // NTPClient updates TimeLib only. configTime/getLocalTime also sets the
+  // ESP32 system clock, which WiFiClientSecure requires for certificate checks.
+  configTime(TIMEZONE_OFFSET, 0, NTP_SERVER);
+  struct tm localTime;
+  bool synced = false;
+  for (int attempt = 0; attempt < 10 && !synced; ++attempt) synced = getLocalTime(&localTime, 1000);
+  if (!synced) {
+    timeSynchronized = false;
+    return false;
+  }
+  time_t systemEpoch = time(nullptr);
+  setTime(systemEpoch + TIMEZONE_OFFSET);
+  currentTime = systemEpoch;
   lastTimeSync = millis();
+  timeSynchronized = true;
+  return true;
 }
 
 // Fetch weather data
 void fetchWeather() {
-  if (WiFi.status() != WL_CONNECTED) {
+  if (!timeSynchronized || WiFi.status() != WL_CONNECTED) {
     return;
   }
 
@@ -450,6 +461,12 @@ void fetchWeather() {
 
   if (httpCode == HTTP_CODE_OK) {
     String payload = https.getString();
+    float newWeatherTemp;
+    String newWeatherCondition;
+    if (weatherMutex != nullptr) xSemaphoreTake(weatherMutex, portMAX_DELAY);
+    newWeatherTemp = weatherTemp;
+    newWeatherCondition = weatherCondition;
+    if (weatherMutex != nullptr) xSemaphoreGive(weatherMutex);
 
     // Parse weather JSON (ArduinoJson 7.x)
     // Using simple string parsing to avoid ArduinoJson dependency issues
@@ -460,7 +477,7 @@ void fetchWeather() {
       int tempEnd = payload.indexOf(',', tempStart);
       if (tempEnd > tempStart) {
         String tempStr = payload.substring(tempStart, tempEnd);
-        weatherTemp = tempStr.toFloat();
+        newWeatherTemp = tempStr.toFloat();
       }
     }
 
@@ -471,11 +488,15 @@ void fetchWeather() {
       char quote = payload.charAt(condStart);
       int condEnd = payload.indexOf(quote, condStart + 1);
       if (condEnd > condStart) {
-        weatherCondition = payload.substring(condStart + 1, condEnd);
+        newWeatherCondition = payload.substring(condStart + 1, condEnd);
       }
     }
 
+    if (weatherMutex != nullptr) xSemaphoreTake(weatherMutex, portMAX_DELAY);
+    weatherTemp = newWeatherTemp;
+    weatherCondition = newWeatherCondition;
     lastWeatherUpdate = millis();
+    if (weatherMutex != nullptr) xSemaphoreGive(weatherMutex);
     weatherDataChanged = true;
   } else {
     Serial.print("Weather HTTPS request failed, HTTP code: ");
@@ -500,17 +521,18 @@ void fetchSystemMetrics() {
 
   HTTPClient http;
 
-  // Fetch from llama-swap health endpoint
+  // /health only proves the service is alive. Require model-list evidence.
   String healthUrl = "http://";
   healthUrl += COMPUTE01_HOST_STR;
-  healthUrl += ":11439/health";
+  healthUrl += ":11439/v1/models";
   http.begin(healthUrl);
   int httpCode = http.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
     String payload = http.getString();
-    // A successful health response is only RUNNING when it names qwen.
-    qwen35Status = payload.indexOf("qwen") >= 0 ? MODEL_RUNNING : MODEL_OFFLINE;
+    const bool qwenListed = payload.indexOf("qwen35") >= 0;
+    const bool qwenLoaded = payload.indexOf("\"status\":{\"value\":\"loaded\"}") >= 0;
+    qwen35Status = qwenListed && qwenLoaded ? MODEL_READY : MODEL_OFFLINE;
   } else if (httpCode == 404) {
     qwen35Status = MODEL_OFFLINE;
   }
@@ -520,12 +542,13 @@ void fetchSystemMetrics() {
   HTTPClient http2;
   String ministralUrl = "http://";
   ministralUrl += COMPUTE01_HOST_STR;
-  ministralUrl += ":11438/health";
+  ministralUrl += ":11438/v1/models";
   http2.begin(ministralUrl);
   httpCode = http2.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
-    ministralStatus = MODEL_RUNNING;
+    String payload = http2.getString();
+    ministralStatus = payload.indexOf("\"data\":[{") >= 0 ? MODEL_READY : MODEL_OFFLINE;
   } else if (httpCode == 404) {
     ministralStatus = MODEL_OFFLINE;
   }
@@ -570,10 +593,10 @@ void handleTouch() {
   if (!ts.getPoint(rawX, rawY)) return;
 
   // CST820 reports native portrait coordinates; map them to the landscape TFT.
-  int touchX = map(rawY, 0, TFT_HEIGHT, 0, TFT_WIDTH);
-  int touchY = map(rawX, 0, TFT_WIDTH, TFT_HEIGHT, 0);
-  touchX = constrain(touchX, 0, TFT_WIDTH - 1);
-  touchY = constrain(touchY, 0, TFT_HEIGHT - 1);
+  int touchX = map(rawY, 0, 320, 0, SCREEN_WIDTH);
+  int touchY = map(rawX, 0, 240, SCREEN_HEIGHT, 0);
+  touchX = constrain(touchX, 0, SCREEN_WIDTH - 1);
+  touchY = constrain(touchY, 0, SCREEN_HEIGHT - 1);
 
   const unsigned long now = millis();
   const unsigned long sinceRelease = now - lastReleaseTime;
@@ -674,13 +697,17 @@ void networkTask(void* parameter) {
     }
   }
 
-  Serial.println("\nWiFi connected!");
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWiFi connected!");
+  } else {
+    Serial.println("\nWiFi unavailable");
+  }
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  // Fetch initial time
-  fetchTime();
-  Serial.println("Time synced!");
+  // Fetch initial time and only report success when the system clock is set.
+  if (fetchTime()) Serial.println("Time synchronized!");
+  else Serial.println("Time synchronization failed; HTTPS weather disabled");
 
   // Main network loop
   unsigned long lastWeatherFetch = 0;
@@ -688,7 +715,7 @@ void networkTask(void* parameter) {
 
   while (true) {
     // Update time periodically (every hour)
-    if (millis() - lastTimeSync >= 3600000) {
+    if (!timeSynchronized || millis() - lastTimeSync >= 3600000) {
       fetchTime();
     }
 
@@ -719,7 +746,7 @@ void setup() {
 
   // Initialize TFT
   tft.init();
-  tft.setRotation(1);  // Portrait mode
+  tft.setRotation(1);  // Landscape: 320x240 framebuffer
   tft.fillScreen(0x0000);
 
   Serial.println("TFT initialized");
@@ -727,6 +754,9 @@ void setup() {
   // Initialize the CST820 capacitive touch controller over I2C.
   ts.begin();
   Serial.println("CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)");
+
+  weatherMutex = xSemaphoreCreateMutex();
+  if (weatherMutex == nullptr) Serial.println("Weather mutex creation failed");
 
   // Create FreeRTOS tasks
   xTaskCreate(displayTask, "Display", 4096, NULL, 2, &displayTaskHandle);

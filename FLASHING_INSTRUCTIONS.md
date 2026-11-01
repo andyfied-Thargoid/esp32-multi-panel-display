@@ -59,18 +59,11 @@ A successful compile must report the application size and produce:
 - `ESP32_MultiPanel_Display.ino.bootloader.bin`
 - `ESP32_MultiPanel_Display.ino.partitions.bin`
 
-The current default partition scheme has a 1.31MB application slot and a filesystem partition beginning at `0x290000` with size `0x160000`.
+The current default partition scheme provides a 1.31MB application slot; this firmware does not use the filesystem partition.
 
-## Build the LittleFS image
+## Filesystem
 
-Put files intended for the device in the sketch's `data/` directory. The installed tool is the Arduino ESP32 package copy, not `/usr/local/bin/mklittlefs`:
-
-```bash
-MKLITTLEFS=/home/andyfied/.arduino15/packages/esp32/tools/mklittlefs/4.0.2-db0513a/mklittlefs
-"$MKLITTLEFS" -c data -s 0x160000 littlefs.bin
-```
-
-The filesystem image must fit within `0x160000` bytes.
+This firmware does not use LittleFS or a device `data/` directory. Do not build or flash a filesystem image.
 
 ## Back up before flashing
 
@@ -84,7 +77,9 @@ python3 -m esptool \
 
 Keep the backup outside Git, preferably in a dated task directory.
 
-## Flash firmware and filesystem
+## Flash firmware
+
+Flash only the bootloader, partition table, and application image:
 
 ```bash
 python3 -m esptool \
@@ -96,13 +91,10 @@ python3 -m esptool \
   --flash-size 4MB \
   0x1000 build/ESP32_MultiPanel_Display.ino.bootloader.bin \
   0x8000 build/ESP32_MultiPanel_Display.ino.partitions.bin \
-  0x10000 build/ESP32_MultiPanel_Display.ino.bin \
-  0x290000 littlefs.bin
+  0x10000 build/ESP32_MultiPanel_Display.ino.bin
 ```
 
-`esptool` must report `Hash of data verified` for each written region.
-
-If only the application changed, reflash only the application image at `0x10000`; do not rebuild or overwrite the filesystem unnecessarily.
+`esptool` must report `Hash of data verified` for each written region. There is no filesystem image to flash. If only the application changed, reflash only the application image at `0x10000`.
 
 ## Verify after flashing
 
@@ -126,7 +118,6 @@ PY
 Require at least:
 
 - application boot banner
-- `LittleFS mounted`
 - `TFT initialized`
 - `CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)`
 - no Guru Meditation or reboot loop
@@ -140,9 +131,7 @@ For stronger verification, read the exact written ranges and compare checksums:
 ```bash
 APP_SIZE=$(stat -c %s build/ESP32_MultiPanel_Display.ino.bin)
 python3 -m esptool --port "$PORT" read-flash 0x10000 "$APP_SIZE" postflash-app.bin
-python3 -m esptool --port "$PORT" read-flash 0x290000 0x160000 postflash-filesystem.bin
 sha256sum build/ESP32_MultiPanel_Display.ino.bin postflash-app.bin
-sha256sum littlefs.bin postflash-filesystem.bin
 ```
 
-The corresponding pairs should match exactly.
+The application image and read-back image should match exactly.
