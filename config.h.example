@@ -15,7 +15,7 @@
 
 #define COMPUTE01_HOST   "192.168.1.92"
 #define QWEN_MODEL_ID   "qwen35-q3"
-#define MINISTRAL_MODEL_ID "mistralai_Ministral-3-3B-Instruct-2512-IQ3_XS.gguf"
+#define MINISTRAL_MODEL_ID "/mnt/marmot/models/ministral3/mistralai_Ministral-3-3B-Instruct-2512-IQ3_XS.gguf"
 #define LLAMA_SWAP_PORT  11439
 #define LLAMA_SWAP_HEALTH "http://192.168.1.92:11439/health"
 #define MINISTRAL_PORT   11438

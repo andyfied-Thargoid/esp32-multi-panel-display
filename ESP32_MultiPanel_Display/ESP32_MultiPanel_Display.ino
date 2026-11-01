@@ -149,7 +149,7 @@ const String COMPUTE01_HOST_STR = "192.168.1.92";
 #define QWEN_MODEL_ID "qwen35-q3"
 #endif
 #ifndef MINISTRAL_MODEL_ID
-#define MINISTRAL_MODEL_ID "mistralai_Ministral-3-3B-Instruct-2512-IQ3_XS.gguf"
+#define MINISTRAL_MODEL_ID "/mnt/marmot/models/ministral3/mistralai_Ministral-3-3B-Instruct-2512-IQ3_XS.gguf"
 #endif
 
 // ============================================================================
@@ -517,7 +517,9 @@ void fetchWeather() {
   https.end();
 }
 
-ModelStatus modelStatusFromResponse(const String &payload, const char *intendedModelId) {
+ModelStatus modelStatusFromResponse(const String &payload,
+                                    const char *intendedModelId,
+                                    bool statusRequired) {
   JsonDocument document;
   DeserializationError error = deserializeJson(document, payload);
   if (error) return MODEL_UNKNOWN;
@@ -525,19 +527,20 @@ ModelStatus modelStatusFromResponse(const String &payload, const char *intendedM
   JsonArray models = document["data"].as<JsonArray>();
   if (models.isNull()) return MODEL_UNKNOWN;
 
-  bool found = false;
   for (JsonObject model : models) {
     const char *modelId = model["id"] | "";
-    if (strstr(modelId, intendedModelId) == nullptr) continue;
-    found = true;
+    if (strcmp(modelId, intendedModelId) != 0) continue;
 
     JsonVariant statusValue = model["status"]["value"];
-    if (statusValue.isNull()) return MODEL_UNKNOWN;
+    // The standalone Ministral server lists its loaded model without a
+    // per-model status field; presence of the exact model ID is its readiness
+    // signal. Qwen's llama-swap response must provide status.value.
+    if (statusValue.isNull()) return statusRequired ? MODEL_UNKNOWN : MODEL_READY;
     const char *status = statusValue | "";
     return strcmp(status, "loaded") == 0 ? MODEL_READY : MODEL_OFFLINE;
   }
 
-  return found ? MODEL_UNKNOWN : MODEL_OFFLINE;
+  return MODEL_OFFLINE;
 }
 
 // Fetch system metrics from compute01
@@ -565,7 +568,7 @@ void fetchSystemMetrics() {
   int httpCode = http.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
-    qwen35Status = modelStatusFromResponse(http.getString(), QWEN_MODEL_ID);
+    qwen35Status = modelStatusFromResponse(http.getString(), QWEN_MODEL_ID, true);
   } else if (httpCode == 404) {
     qwen35Status = MODEL_OFFLINE;
   }
@@ -582,7 +585,7 @@ void fetchSystemMetrics() {
   httpCode = http2.GET();
 
   if (httpCode >= 200 && httpCode < 300) {
-    ministralStatus = modelStatusFromResponse(http2.getString(), MINISTRAL_MODEL_ID);
+    ministralStatus = modelStatusFromResponse(http2.getString(), MINISTRAL_MODEL_ID, false);
   } else if (httpCode == 404) {
     ministralStatus = MODEL_OFFLINE;
   }
