@@ -1,0 +1,46 @@
+name: Build CYD firmware
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.12
+      - name: Install libraries
+        run: |
+          arduino-cli lib install TFT_eSPI
+          arduino-cli lib install ArduinoJson
+          arduino-cli lib install NTPClient
+          arduino-cli lib install Time
+      - name: Select verified CYD display setup
+        run: |
+          setup_dir="$HOME/Arduino/libraries/TFT_eSPI/User_Setups"
+          mkdir -p "$setup_dir"
+          cp Setup801_ESP32_CYD_ILI9341_240x320.h "$setup_dir/"
+          python3 - <<'PY'
+          from pathlib import Path
+          selector = Path.home() / "Arduino/libraries/TFT_eSPI/User_Setup_Select.h"
+          text = selector.read_text()
+          old = "#include <User_Setup.h>"
+          new = "#include <User_Setups/Setup801_ESP32_CYD_ILI9341_240x320.h>"
+          if text.count(old) != 1:
+              raise SystemExit("unexpected TFT_eSPI selector")
+          selector.write_text(text.replace(old, new, 1))
+          PY
+      - name: Configure credentials with safe placeholders
+        run: cp config.h.example ESP32_MultiPanel_Display/config.h
+      - name: Compile canonical sketch
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32 \
+            --libraries "$HOME/Arduino/libraries" \
+            --output-dir build \
+            ESP32_MultiPanel_Display
