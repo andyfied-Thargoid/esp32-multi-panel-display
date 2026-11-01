@@ -55,13 +55,18 @@
 // ESP32-2432S028C (C revision): CST820 capacitive touch over I2C.
 class CST820Touch {
  public:
-  void begin() {
+  bool begin() {
     pinMode(CST820_RST, OUTPUT);
     digitalWrite(CST820_RST, LOW);
     delay(5);
     digitalWrite(CST820_RST, HIGH);
     Wire.begin(CST820_SDA, CST820_SCL);
     delay(50);
+
+    // Probe the controller address and require an I2C acknowledgement.
+    Wire.beginTransmission(CST820_ADDR);
+    const uint8_t error = Wire.endTransmission();
+    return error == 0;
   }
 
   bool touched() {
@@ -810,8 +815,11 @@ void setup() {
   Serial.println("TFT initialized");
 
   // Initialize the CST820 capacitive touch controller over I2C.
-  ts.begin();
-  Serial.println("CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)");
+  if (ts.begin()) {
+    Serial.println("CST820 touch initialized (I2C SDA=33 SCL=32 RST=25)");
+  } else {
+    Serial.println("CST820 touch controller not detected (no I2C acknowledgement at 0x15)");
+  }
 
   weatherMutex = xSemaphoreCreateMutex();
   if (weatherMutex == nullptr) Serial.println("Weather mutex creation failed");
