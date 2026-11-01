@@ -140,6 +140,8 @@ float diskUsage = 0.0;
 unsigned long lastSystemUpdate = 0;
 volatile bool systemDataChanged = true;
 const unsigned long SYSTEM_UPDATE_INTERVAL = 30000;  // 30 seconds
+const uint16_t HTTP_CONNECT_TIMEOUT_MS = 5000;
+const uint16_t HTTP_REQUEST_TIMEOUT_MS = 8000;
 
 // API endpoints (compute01 is on 192.168.1.92 per hardware manifest)
 const String COMPUTE01_HOST_STR = "192.168.1.92";
@@ -453,6 +455,8 @@ void fetchWeather() {
   client.setCACert(OPENWEATHERMAP_ROOT_CA);
 
   HTTPClient https;
+  https.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
+  https.setTimeout(HTTP_REQUEST_TIMEOUT_MS);
   String url = "https://api.openweathermap.org/data/2.5/weather?q=";
   url += weatherCity;
   url += "&units=metric&lang=en&appid=";
@@ -550,6 +554,8 @@ void fetchSystemMetrics() {
   }
 
   HTTPClient http;
+  http.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
+  http.setTimeout(HTTP_REQUEST_TIMEOUT_MS);
 
   // /health only proves the service is alive. Require model-list evidence.
   String healthUrl = "http://";
@@ -567,6 +573,8 @@ void fetchSystemMetrics() {
 
   // Fetch Ministral status
   HTTPClient http2;
+  http2.setConnectTimeout(HTTP_CONNECT_TIMEOUT_MS);
+  http2.setTimeout(HTTP_REQUEST_TIMEOUT_MS);
   String ministralUrl = "http://";
   ministralUrl += COMPUTE01_HOST_STR;
   ministralUrl += ":11438/v1/models";
