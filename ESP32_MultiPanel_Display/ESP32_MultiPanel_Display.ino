@@ -748,17 +748,30 @@ void networkTask(void* parameter) {
   Serial.println(WiFi.localIP());
 
   // Fetch initial time and only report success when the system clock is set.
-  if (fetchTime()) Serial.println("Time synchronized!");
-  else Serial.println("Time synchronization failed; HTTPS weather disabled");
+  const bool initialTimeSynchronized = fetchTime();
+  if (initialTimeSynchronized) {
+    Serial.println("Time synchronized!");
+  } else {
+    Serial.println("Time synchronization failed; HTTPS weather disabled");
+  }
 
-  // Main network loop
-  unsigned long lastWeatherFetch = 0;
-  unsigned long lastSystemFetch = 0;
+  // Fetch both panels immediately after boot instead of waiting for their
+  // normal five-minute/30-second polling intervals.
+  if (initialTimeSynchronized) fetchWeather();
+  fetchSystemMetrics();
+
+  // Main network loop. Timestamps start after the initial requests complete.
+  unsigned long lastWeatherFetch = millis();
+  unsigned long lastSystemFetch = millis();
 
   while (true) {
-    // Update time periodically (every hour)
+    // Update time periodically (every hour). A newly successful sync also
+    // triggers the first weather request when boot synchronization failed.
     if (!timeSynchronized || millis() - lastTimeSync >= 3600000) {
-      fetchTime();
+      if (fetchTime()) {
+        fetchWeather();
+        lastWeatherFetch = millis();
+      }
     }
 
     // Fetch weather every 5 minutes
